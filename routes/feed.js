@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
 
-var db = mysql.createConnection({
-				host: '176.9.198.165',
-				user: 'api',
-				password: '223O2EOJAy',
+const db = mysql.createConnection({
+				host: 'localhost',
+				user: 'app',
+				password: 'appappapp',
 				database: 'app'
 			});
 
@@ -36,7 +36,7 @@ router.get('/posts', function (req, res) {
 	`, function (error, result, field) {
 		if (error) throw error;
 
-		return res.json({listPosts: result});
+		return res.json({feedPosts: result});
 	});
 });
 

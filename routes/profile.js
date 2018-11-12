@@ -2,17 +2,17 @@ const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
 
-var db = mysql.createConnection({
-				host: '176.9.198.165',
-				user: 'api',
-				password: '223O2EOJAy',
+const db = mysql.createConnection({
+				host: 'localhost',
+				user: 'app',
+				password: 'appappapp',
 				database: 'app'
 			});
 
 
 router.get('/getInfo', function (req, res) {
 	const userId = req.query.id
-	let props = {};
+	const profile = {};
 
 	db.query(`
 		SELECT 
@@ -41,11 +41,11 @@ router.get('/getInfo', function (req, res) {
 		`, function (error2, result2, field2) {
 			if (error2) throw error2;
 
-			props.profileInfo = result1[0];
-			props.profileInfo.count_posts = result2.length;
-			props.profilePosts = result2;
+			profile.profileInfo = result1[0];
+			profile.profileInfo.count_posts = result2.length;
+			profile.profilePosts = result2;
 
-			return res.json(props);
+			return res.json({profile});
 		});
 	});
 });

@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
 
-var db = mysql.createConnection({
-				host: '176.9.198.165',
-				user: 'api',
-				password: '223O2EOJAy',
+const db = mysql.createConnection({
+				host: 'localhost',
+				user: 'app',
+				password: 'appappapp',
 				database: 'app'
 			});
 
@@ -13,7 +13,6 @@ var db = mysql.createConnection({
 router.get('/users', function (req, res) {
 	const page = req.query.page;
 	const userId = req.query.userid;
-	const props = {};
 	let option = '';
 	let condition = '';
 
@@ -51,10 +50,10 @@ router.get('/users', function (req, res) {
 		`, function (error2, result2, field2) {
 			if (error2) throw error2;
 
-			props.ownerUserName = result2[0].user_name;
-			props.listUsers = result1;
-
-			return res.json(props);
+			return res.json({
+				ownerUserName: result2[0].user_name,
+				listUsers: result1
+			});
 		});
 	});
 		

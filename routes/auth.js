@@ -6,9 +6,9 @@ const generateToken = require('../utils/generateToken.js');
 //const verifyToken = require('../utils/verifyToken.js');
 
 const db = mysql.createConnection({
-				host: '176.9.198.165',
-				user: 'api',
-				password: '223O2EOJAy',
+				host: 'localhost', //176.9.198.165
+				user: 'app',
+				password: 'appappapp', //223O2EOJAy
 				database: 'app'
 			});
 
@@ -26,7 +26,11 @@ router.post('/vkontakte', (req, res) => {
 			token: token
 		}
 
-		console.log('authorized: ' + req.session.cookie._expires)
+		console.log('authorized: ')
+		console.log(req.session.cookie)
+		
+		const hour = 3600000;
+		req.session.cookie.expires = new Date(Date.now() + hour)
 
 		res.json({
 			success: true,

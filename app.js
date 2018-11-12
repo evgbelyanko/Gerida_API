@@ -1,19 +1,17 @@
 const express = require('express');
 const app = express();
-
 const server = require('http').createServer(app);
-//const io = require('socket.io')(server)
-const redis = require('redis');
-const session = require('express-session');
-const redisStore = require('connect-redis')(session);
-const bodyParser = require('body-parser');
+
+const expressSession = require('express-session');
+const redisClient = require('redis').createClient();
+const redisStore = require('connect-redis')(expressSession);
+
 const cors = require('cors');
-const client = require('./utils/redisClient.js');
-//const sharedsession = require('express-socket.io-session');
-//const cookieParser = require('cookie-parser');
+const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 
 
-//app.use(cookieParser());
+app.use(cookieParser());
 app.use(cors({
   origin:['http://localhost:3000'],
   methods:['GET','POST'],
@@ -22,31 +20,25 @@ app.use(cors({
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-app.use(session({
+app.use(expressSession({
 	name: 'RedisSession',
-	secret: 'my-secret',
+	secret: 'DnB07A4QWzCK4CyEdARvZxZkH8WSqBQT',
 	resave: true,
 	saveUninitialized: true,
-	rolling: false,
 	cookie: {
 		httpOnly: false,
 		secure: false,
-		maxAge: 1*60*(60*1000) // 1 hour
+		maxAge: 3600000 // 1 hour
 	},
 	store: new redisStore({ 
-	  host: 'localhost', 
+	  host: 'localhost',
 	  port: 6379, 
-	  client: client, 
-	  ttl :  260
+	  client: redisClient
 	})
 }));
-/*io.use(sharedsession(session({
-	secret: 'my-secret',
-	resave: true,
-	saveUninitialized: true,
-})));*/
 
 const map = require('./routes/map');
+const menu = require('./routes/menu');
 const feed = require('./routes/feed');
 const auth = require('./routes/auth');
 const search = require('./routes/search');
@@ -73,6 +65,7 @@ app.all('/*', function(req, res, next) {
 });
 app.use('/auth', auth);
 app.use('/map', protectedSection, map);
+app.use('/menu', protectedSection, menu);
 app.use('/feed', protectedSection, feed);
 app.use('/search', protectedSection, search);
 app.use('/follows', protectedSection, follows);
