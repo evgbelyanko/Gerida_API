@@ -1,12 +1,14 @@
+const config = require('../config.json');
+
 const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
 
 const db = mysql.createConnection({
-				host: 'localhost',
-				user: 'app',
-				password: 'appappapp',
-				database: 'app'
+				host: config.db.host,
+				user: config.db.user,
+				password: config.db.password,
+				database: config.db.database
 			});
 
 

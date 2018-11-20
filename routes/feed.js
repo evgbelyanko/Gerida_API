@@ -1,12 +1,14 @@
+const config = require('../config.json');
+
 const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
 
 const db = mysql.createConnection({
-				host: 'localhost',
-				user: 'app',
-				password: 'appappapp',
-				database: 'app'
+				host: config.db.host,
+				user: config.db.user,
+				password: config.db.password,
+				database: config.db.database
 			});
 
 router.get('/posts', function (req, res) {
@@ -28,7 +30,7 @@ router.get('/posts', function (req, res) {
 		JOIN photo_dinamic ON photo.photo_id = photo_dinamic.photo_id
 		JOIN users_dinamic ON photo.user_id = users_dinamic.user_id
 		LEFT JOIN avatars ON avatars.user_id = users_dinamic.user_id
-		LEFT OUTER JOIN follows ON follows.follower_id = ${req.session.user.id}
+		LEFT OUTER JOIN follows ON follows.follower_id = ${req.user}
 		LEFT OUTER JOIN likes ON likes.photo_id = photo.photo_id
 			&& likes.user_id = follows.follower_id
 		WHERE photo.user_id = follows.who_id 

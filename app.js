@@ -7,80 +7,65 @@ const redisClient = require('redis').createClient();
 const redisStore = require('connect-redis')(expressSession);
 
 const cors = require('cors');
+const passport = require('passport');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 
-
 app.use(cookieParser());
 app.use(cors({
-  origin:['http://localhost:3000'],
+  origin:['*'],
   methods:['GET','POST'],
   credentials: true 
 }));
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ 
+	extended: true,
+	limit: '5mb'
+}));
 app.use(bodyParser.json());
 
 app.use(expressSession({
 	name: 'RedisSession',
 	secret: 'DnB07A4QWzCK4CyEdARvZxZkH8WSqBQT',
 	resave: true,
-	saveUninitialized: true,
+	saveUninitialized: false,
+	rolling: true,
+	store: new redisStore({ 
+		host: 'localhost',
+		port: 6379, 
+		client: redisClient
+	}),
 	cookie: {
 		httpOnly: false,
 		secure: false,
-		maxAge: 3600000 // 1 hour
+		maxAge: 604800000 // week
 	},
-	store: new redisStore({ 
-	  host: 'localhost',
-	  port: 6379, 
-	  client: redisClient
-	})
 }));
 
-const map = require('./routes/map');
-const menu = require('./routes/menu');
-const feed = require('./routes/feed');
-const auth = require('./routes/auth');
-const search = require('./routes/search');
-const follows = require('./routes/follows');
-const profile = require('./routes/profile');
-const setting = require('./routes/setting');
-const photoview = require('./routes/photoview');
-
+app.use(passport.initialize());
+app.use(passport.session());
+passport.serializeUser((user, done) => { done(null, user.id); });
+passport.deserializeUser((id, done) => { done(null, id); });
 
 function protectedSection(req, res, next) {
-	if(!req.session.user){
-		console.log('not authorized')
-		res.status(401).send({error: 401})
-	} else {
-		next();
-	}
+	!req.user ? res.status(401).send({error: 401}) : next();
 }
 
-app.all('/*', function(req, res, next) {
-	res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+app.all('/*', (req, res, next) => {
+	res.header('Access-Control-Allow-Origin', '*');
 	res.header('Access-Control-Allow-Credentials', true);
 	res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
 	next();
 });
-app.use('/auth', auth);
-app.use('/map', protectedSection, map);
-app.use('/menu', protectedSection, menu);
-app.use('/feed', protectedSection, feed);
-app.use('/search', protectedSection, search);
-app.use('/follows', protectedSection, follows);
-app.use('/profile', protectedSection, profile);
-app.use('/setting', protectedSection, setting);
-app.use('/photoview', protectedSection, photoview);
-
-
-
-
-
-
-
-
-
+app.use('/auth', require('./routes/auth'));
+app.use('/camera', require('./routes/camera'));
+app.use('/map', protectedSection, require('./routes/map'));
+app.use('/menu', protectedSection, require('./routes/menu'));
+app.use('/feed', protectedSection, require('./routes/feed'));
+app.use('/search', protectedSection, require('./routes/search'));
+app.use('/follows', protectedSection, require('./routes/follows'));
+app.use('/profile', protectedSection, require('./routes/profile'));
+app.use('/setting', protectedSection, require('./routes/setting'));
+app.use('/photoview', protectedSection, require('./routes/photoview'));
 
 server.listen(8000);
 console.log(`API is running, port :8000`);

@@ -1,19 +1,19 @@
+const config = require('../config.json');
+
 const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
 
 const db = mysql.createConnection({
-				host: 'localhost',
-				user: 'app',
-				password: 'appappapp',
-				database: 'app'
+				host: config.db.host,
+				user: config.db.user,
+				password: config.db.password,
+				database: config.db.database
 			});
 
 
 router.get('/post', function (req, res) {
 	const postId = req.query.id
-	const startLimit = 0;
-	const countLimit = 10;
 	let props = {};
 
 	db.query(`
@@ -52,7 +52,7 @@ router.get('/post', function (req, res) {
 				ON comments.user_id = users_dinamic.user_id
 			LEFT JOIN avatars ON avatars.user_id = users_dinamic.user_id
 			WHERE photo_id = ${postId}
-				ORDER BY comment_id DESC LIMIT ${startLimit}, ${countLimit}
+				ORDER BY comment_id DESC LIMIT 0, 10
 		`, function (error, result2, field) {
 			if (error) throw error;
 
@@ -61,6 +61,149 @@ router.get('/post', function (req, res) {
 
 			return res.json(props);
 		});
+	});
+});
+
+router.get('/loadMoreComments', function (req, res) {
+	const postId = req.query.postId
+	const startLimit = req.query.startLimit
+	const countLimit = req.query.countLimit
+
+	db.query(`
+		SELECT
+			comments.comment_id,
+			users_dinamic.user_id,
+			users_dinamic.user_name,
+			comments.comment_text,
+			avatars.avatar_50
+		FROM comments 
+		JOIN users_dinamic 
+			ON comments.user_id = users_dinamic.user_id
+		LEFT JOIN avatars ON avatars.user_id = users_dinamic.user_id
+		WHERE photo_id = ${postId}
+			ORDER BY comment_id DESC LIMIT ${startLimit}, ${countLimit}
+	`, function (error, result, field) {
+		if (error) throw error;
+
+		result = result ? result : {loadMoreComments: false};
+
+		return res.json(result);
+	});
+});
+
+router.post('/changeTextBox', function (req, res) {
+	const postId = req.body.postId
+	const postTitle = req.body.postTitle
+	const postDesc = req.body.postDesc
+
+	db.query(`
+		UPDATE photo_dinamic a
+		JOIN photo b ON b.photo_id = a.photo_id
+		SET 
+			a.photo_title = "${postTitle}",
+			a.photo_desc = "${postDesc}"
+		WHERE a.photo_id = ${postId}
+			AND b.user_id = ${req.user}
+	`, function (error, result, field) {
+		if (error) throw error;
+		return res.json({changeDesc: 'ok'});
+	});
+});
+
+router.post('/sendComment', function (req, res) {
+	const postId = req.body.postId
+	const commentText = req.body.commentText
+
+	db.query(`
+		INSERT INTO comments (
+			photo_id,
+			comment_text,
+			user_id 
+		) VALUES (
+			${postId},
+			"${commentText}",
+			${req.user}
+		)
+	`);
+
+	db.query(`
+		UPDATE photo_dinamic
+		SET photo_comments = photo_comments + 1
+		WHERE photo_id = ${postId}
+	`);
+
+	db.query(`
+		SELECT
+			comments.comment_id,
+			comments.comment_text,
+			comments.user_id,
+			users_dinamic.user_name,
+			avatars.avatar_50
+		FROM comments
+		JOIN users_dinamic ON users_dinamic.user_id = comments.user_id
+		JOIN avatars ON avatars.user_id = users_dinamic.user_id
+		WHERE comments.user_id = ${req.user}
+			ORDER BY comments.comment_id DESC LIMIT 1
+	`, function (error, result, field) {
+		if (error) throw error;
+
+		return res.json(result[0]);
+	});
+});
+
+router.post('/deletePost', function (req, res) {
+	const postId = req.body.postId
+
+	db.query(`
+		SELECT
+			photo_250,
+			photo_600
+		FROM photo
+		WHERE user_id = ${req.user}
+			AND photo_id = ${postId}
+	`, function (error, result, field) {
+		if (error) throw error;
+
+/*		unlink($_SERVER['DOCUMENT_ROOT'].parse_url($row[0], PHP_URL_PATH));
+		unlink($_SERVER['DOCUMENT_ROOT'].parse_url($row[1], PHP_URL_PATH));*/
+		db.query(`
+			DELETE
+			FROM photo
+			WHERE user_id = ${req.user}
+				AND photo_id = ${postId}
+		`);
+
+		return res.json({deletePost: 'ok'});
+	});
+});
+
+router.post('/deleteComment', function (req, res) {
+	const postId = req.body.postId
+	const commentId = req.body.commentId
+
+	db.query(`
+		SELECT 
+			comments.user_id
+		FROM comments
+		WHERE comments.comment_id = ${commentId}
+	`, function (error, result, field) {
+		if (error) throw error;
+
+		if(+result[0].user_id === req.user){
+			db.query(`
+				UPDATE photo_dinamic
+				SET photo_comments = photo_comments - 1
+				WHERE photo_id = ${postId}
+			`);
+			db.query(`
+				DELETE 
+				FROM comments 
+				WHERE comment_id = ${commentId}
+					AND user_id = ${req.user}
+			`);
+		}
+
+		return res.json({deleteComment: 'ok'});
 	});
 });
 
