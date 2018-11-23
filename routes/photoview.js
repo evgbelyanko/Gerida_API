@@ -4,6 +4,9 @@ const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
 
+const fs = require('fs');
+const url = require('url');
+
 const db = mysql.createConnection({
 				host: config.db.host,
 				user: config.db.user,
@@ -34,7 +37,7 @@ router.get('/post', function (req, res) {
 		JOIN photo_dinamic ON photo.photo_id = photo_dinamic.photo_id
 		LEFT JOIN avatars ON avatars.user_id = users_dinamic.user_id
 		LEFT OUTER JOIN likes ON photo.photo_id = likes.photo_id 
-			&& likes.user_id = 162117576
+			&& likes.user_id = ${req.user}
 		WHERE photo.photo_id = ${postId} LIMIT 1
 	`, function (error, result1, field) {
 		if (error) throw error;
@@ -162,10 +165,12 @@ router.post('/deletePost', function (req, res) {
 		WHERE user_id = ${req.user}
 			AND photo_id = ${postId}
 	`, function (error, result, field) {
-		if (error) throw error;
+		const oldPath250 = url.parse(result[0].photo_250).pathname;
+		const oldPath600 = url.parse(result[0].photo_600).pathname;
 
-/*		unlink($_SERVER['DOCUMENT_ROOT'].parse_url($row[0], PHP_URL_PATH));
-		unlink($_SERVER['DOCUMENT_ROOT'].parse_url($row[1], PHP_URL_PATH));*/
+		fs.unlink(config.cloud.pathForWindows + oldPath250, err => {});
+		fs.unlink(config.cloud.pathForWindows + oldPath600, err => {});
+
 		db.query(`
 			DELETE
 			FROM photo

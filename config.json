@@ -1,7 +1,7 @@
 {
-	"clientUrl": "http://77.106.125.227:3000",
-	"serverUrl": "http://77.106.125.227:8000",
-	"cloudUrl": "http://77.106.125.227",
+	"clientUrl": "https://77.106.125.227:3000",
+	"serverUrl": "https://77.106.125.227:8000",
+	"cloudUrl": "https://77.106.125.227",
 	"db": {
 		"host": "localhost",
 		"user": "app",
@@ -12,6 +12,7 @@
 		"pathForWindows": "C:/AppServ/www/",
 		"defaultAvatars50": "/img/default50.jpg",
 		"defaultAvatars150": "/img/default150.jpg",
+		"tmp": "/cloud/tmp/",
 		"avatars50": "/cloud/avatars/50/",
 		"avatars150": "/cloud/avatars/150/",
 		"photos250": "/cloud/photos/250/",

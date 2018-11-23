@@ -4,8 +4,8 @@ const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
 
-const url = require('url');
 const fs = require('fs');
+const url = require('url');
 const sharp = require('sharp');
 const upload = require('../utils/upload');
 
@@ -18,7 +18,6 @@ const db = mysql.createConnection({
 
 
 router.get('/getInfo', function (req, res) {
-	const userId = req.query.id
 	let setting = {};
 
 	db.query(`

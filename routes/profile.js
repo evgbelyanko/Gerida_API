@@ -13,8 +13,10 @@ const db = mysql.createConnection({
 
 
 router.get('/getInfo', function (req, res) {
-	const userId = req.query.id
+	const userId = +req.query.id
 	const profile = {};
+
+	console.log(typeof userId)
 
 	db.query(`
 		SELECT 
@@ -30,8 +32,8 @@ router.get('/getInfo', function (req, res) {
 		LEFT OUTER JOIN avatars ON avatars.user_id = users_dinamic.user_id
 		LEFT OUTER JOIN country ON country.country_id = users_dinamic.country_id
 		WHERE users_dinamic.user_id = ${userId} LIMIT 1
-	`, function (error1, result1, field1) {
-		if (error1) throw error1;
+	`, function (error, result, field) {
+		profile.profileInfo = result[0];
 		
 		db.query(`
 			SELECT
@@ -40,12 +42,9 @@ router.get('/getInfo', function (req, res) {
 			FROM photo
 			WHERE user_id = ${userId}
 				ORDER BY photo_timestamp DESC
-		`, function (error2, result2, field2) {
-			if (error2) throw error2;
-
-			profile.profileInfo = result1[0];
-			profile.profileInfo.count_posts = result2.length;
-			profile.profilePosts = result2;
+		`, function (error, result, field) {
+			profile.profileInfo.count_posts = result.length;
+			profile.profilePosts = result;
 
 			return res.json({profile});
 		});
