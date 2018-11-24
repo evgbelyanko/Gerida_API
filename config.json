@@ -4,8 +4,8 @@
 	"cloudUrl": "https://77.106.125.227",
 	"db": {
 		"host": "localhost",
-		"user": "app",
-		"password": "appappapp",
+		"user": "root",
+		"password": "CPUa84oR",
 		"database": "app"
 	},
 	"cloud": {

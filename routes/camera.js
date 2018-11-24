@@ -1,4 +1,5 @@
 const config = require('../config.json');
+const resError = require('../utils/resError');
 
 const express = require('express');
 const router = express.Router();
@@ -7,6 +8,7 @@ const mysql = require('mysql');
 const fs = require('fs');
 const sharp = require('sharp');
 const upload = require('../utils/upload');
+const Validator = require("fastest-validator");
 
 const db = mysql.createConnection({
 				host: config.db.host,
@@ -20,8 +22,8 @@ router.post('/uploadpicture', function (req, res) {
 	upload(req, res, function(error) {
 		const filePath = req.file.path;
 		const fileName = req.file.filename;
-		const photoTitle = req.body.photo_title;
-		const photoDesc = req.body.photo_desc;
+		const photoTitle = req.body.photo_title.replace(/\r?\n?\s+/g, ' ').trim();
+		const photoDesc = req.body.photo_desc.replace(/\s+/g, ' ').trim();
 		const photoLatitude = req.body.latitude;
 		const photoLongitude = req.body.longitude;
 		const photoUserId = req.body.user_id;
@@ -30,6 +32,28 @@ router.post('/uploadpicture', function (req, res) {
 			photos600,
 			pathForWindows
 		} = config.cloud;
+
+		const schema = new Validator().compile({
+			filePath: { type: 'string', empty: false },
+			fileName: { type: 'string', empty: false },
+			photoTitle: { type: 'string', max: 50 },
+			photoDesc: { type: 'string', max: 250 },
+			photoLatitude: { type: 'string', empty: false },
+			photoLongitude: { type: 'string', empty: false },
+			photoUserId: { type: 'string', empty: false }
+		})
+
+		const check = schema({
+			filePath: filePath,
+			fileName: fileName,
+			photoTitle: photoTitle,
+			photoDesc: photoDesc,
+			photoLatitude: photoLatitude,
+			photoLongitude: photoLongitude,
+			photoUserId: photoUserId
+		});
+
+		if(check !== true) return resError(res, 400);
 
 		fs.readFile(filePath, (err, data) => {
 			const prom1 = sharp(data)
@@ -49,7 +73,7 @@ router.post('/uploadpicture', function (req, res) {
 				const minutes = date.getMinutes();
 				const seconds = date.getSeconds();
 				const milliseconds = date.getMilliseconds();
-				const photoIdThisTime = `${day}${hours}${minutes}${seconds}${milliseconds}`;
+				const thisTime_photoId = `${day}${hours}${minutes}${seconds}${milliseconds}`;
 
 				db.query(`
 					INSERT INTO photo (
@@ -60,12 +84,12 @@ router.post('/uploadpicture', function (req, res) {
 						photo_longitude,
 						user_id
 					) VALUES (
-						"${photoIdThisTime}",
+						"${thisTime_photoId}",
 						"${config.cloudUrl + photos250 + fileName}",
 						"${config.cloudUrl + photos600 + fileName}",
-						"${photoLatitude}",
-						"${photoLongitude}",
-						"${photoUserId}"
+						"${+photoLatitude}",
+						"${+photoLongitude}",
+						"${+photoUserId}"
 					)
 				`);
 
@@ -75,14 +99,14 @@ router.post('/uploadpicture', function (req, res) {
 						photo_title,
 						photo_desc
 					) VALUES (
-						"${photoIdThisTime}",
+						"${thisTime_photoId}",
 						"${photoTitle}",
 						"${photoDesc}"
 					)
 				`);
 
 				return res.json({
-					postId: photoIdThisTime,
+					postId: thisTime_photoId,
 					title: photoTitle,
 					desc: photoDesc,
 					latitude: photoLatitude,

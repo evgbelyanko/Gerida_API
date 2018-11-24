@@ -1,8 +1,10 @@
 const config = require('../config.json');
+const resError = require('../utils/resError');
 
 const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
+const Validator = require('fastest-validator');
 
 const fs = require('fs');
 const url = require('url');
@@ -15,9 +17,21 @@ const db = mysql.createConnection({
 			});
 
 
-router.get('/post', function (req, res) {
-	const postId = req.query.id
+router.get('/post', (req, res) => {
+	const postId = +req.query.id
 	let props = {};
+
+	const schema = new Validator().compile({
+		postId: { type: 'number', empty: false },
+		props: { type: 'object' },
+	})
+
+	const check = schema({
+		postId: postId,
+		props: props,
+	});
+
+	if(check !== true) return resError(res, 400);
 
 	db.query(`
 		SELECT 
@@ -37,11 +51,11 @@ router.get('/post', function (req, res) {
 		JOIN photo_dinamic ON photo.photo_id = photo_dinamic.photo_id
 		LEFT JOIN avatars ON avatars.user_id = users_dinamic.user_id
 		LEFT OUTER JOIN likes ON photo.photo_id = likes.photo_id 
-			&& likes.user_id = ${req.user}
-		WHERE photo.photo_id = ${postId} LIMIT 1
-	`, function (error, result1, field) {
-		if (error) throw error;
-		
+			&& likes.user_id = "${req.user}"
+		WHERE photo.photo_id = "${+postId}" LIMIT 1
+	`, (error, result, field) => {
+		if(!result || !result.length) return resError(res, 404);
+		props.postInfo = result[0];
 
 		db.query(`
 			SELECT
@@ -54,23 +68,34 @@ router.get('/post', function (req, res) {
 			JOIN users_dinamic 
 				ON comments.user_id = users_dinamic.user_id
 			LEFT JOIN avatars ON avatars.user_id = users_dinamic.user_id
-			WHERE photo_id = ${postId}
+			WHERE photo_id = "${+postId}"
 				ORDER BY comment_id DESC LIMIT 0, 10
-		`, function (error, result2, field) {
-			if (error) throw error;
-
-			props.postInfo = result1[0];
-			props.postComments = result2;
+		`, (error, result, field) => {
+			props.postComments = result;
 
 			return res.json(props);
 		});
 	});
 });
 
-router.get('/loadMoreComments', function (req, res) {
-	const postId = req.query.postId
-	const startLimit = req.query.startLimit
-	const countLimit = req.query.countLimit
+router.get('/loadMoreComments', (req, res) => {
+	const postId = +req.query.postId
+	const startLimit = +req.query.startLimit
+	const countLimit = +req.query.countLimit
+
+	const schema = new Validator().compile({
+		postId: { type: 'number', empty: false },
+		startLimit: { type: 'number', empty: false },
+		countLimit: { type: 'number', empty: false },
+	})
+
+	const check = schema({
+		postId: postId,
+		startLimit: startLimit,
+		countLimit: countLimit,
+	});
+
+	if(check !== true) return resError(res, 400);
 
 	db.query(`
 		SELECT
@@ -83,21 +108,33 @@ router.get('/loadMoreComments', function (req, res) {
 		JOIN users_dinamic 
 			ON comments.user_id = users_dinamic.user_id
 		LEFT JOIN avatars ON avatars.user_id = users_dinamic.user_id
-		WHERE photo_id = ${postId}
-			ORDER BY comment_id DESC LIMIT ${startLimit}, ${countLimit}
-	`, function (error, result, field) {
-		if (error) throw error;
-
+		WHERE photo_id = "${+postId}"
+			ORDER BY comment_id DESC LIMIT "${+startLimit}", "${+countLimit}"
+	`, (error, result, field) => {
 		result = result ? result : {loadMoreComments: false};
 
 		return res.json(result);
 	});
 });
 
-router.post('/changeTextBox', function (req, res) {
-	const postId = req.body.postId
-	const postTitle = req.body.postTitle
-	const postDesc = req.body.postDesc
+router.post('/changeTextBox', (req, res) => {
+	const postId = +req.body.postId;
+	const postTitle = req.body.postTitle.replace(/\r?\n?\s+/g, ' ').trim();
+	const postDesc = req.body.postDesc.replace(/\s+/g, ' ').trim();
+
+	const schema = new Validator().compile({
+		postId: { type: 'number', empty: false },
+		postTitle: { type: 'string', max: 50 },
+		postDesc: { type: 'string', max: 250 },
+	})
+
+	const check = schema({
+		postId: postId,
+		postTitle: postTitle,
+		postDesc: postDesc,
+	});
+
+	if(check !== true) return resError(res, 400);
 
 	db.query(`
 		UPDATE photo_dinamic a
@@ -105,17 +142,28 @@ router.post('/changeTextBox', function (req, res) {
 		SET 
 			a.photo_title = "${postTitle}",
 			a.photo_desc = "${postDesc}"
-		WHERE a.photo_id = ${postId}
-			AND b.user_id = ${req.user}
-	`, function (error, result, field) {
-		if (error) throw error;
+		WHERE a.photo_id = "${+postId}"
+			AND b.user_id = "${req.user}"
+	`, (error, result, field) => {
 		return res.json({changeDesc: 'ok'});
 	});
 });
 
-router.post('/sendComment', function (req, res) {
-	const postId = req.body.postId
-	const commentText = req.body.commentText
+router.post('/sendComment', (req, res) => {
+	const postId = +req.body.postId;
+	const commentText = req.body.commentText.replace(/\s+/g, ' ').trim();
+
+	const schema = new Validator().compile({
+		postId: { type: 'number', empty: false },
+		commentText: { type: 'string', empty: false, min: 1, max: 250 },
+	})
+
+	const check = schema({
+		postId: postId,
+		commentText: commentText,
+	});
+
+	if(check !== true) return resError(res, 400);
 
 	db.query(`
 		INSERT INTO comments (
@@ -123,16 +171,16 @@ router.post('/sendComment', function (req, res) {
 			comment_text,
 			user_id 
 		) VALUES (
-			${postId},
+			"${+postId}",
 			"${commentText}",
-			${req.user}
+			"${req.user}"
 		)
 	`);
 
 	db.query(`
 		UPDATE photo_dinamic
 		SET photo_comments = photo_comments + 1
-		WHERE photo_id = ${postId}
+		WHERE photo_id = "${+postId}"
 	`);
 
 	db.query(`
@@ -145,26 +193,34 @@ router.post('/sendComment', function (req, res) {
 		FROM comments
 		JOIN users_dinamic ON users_dinamic.user_id = comments.user_id
 		JOIN avatars ON avatars.user_id = users_dinamic.user_id
-		WHERE comments.user_id = ${req.user}
+		WHERE comments.user_id = "${req.user}"
 			ORDER BY comments.comment_id DESC LIMIT 1
-	`, function (error, result, field) {
-		if (error) throw error;
-
+	`, (error, result, field) => {
 		return res.json(result[0]);
 	});
 });
 
-router.post('/deletePost', function (req, res) {
-	const postId = req.body.postId
+router.post('/deletePost', (req, res) => {
+	const postId = +req.body.postId;
+
+	const schema = new Validator().compile({
+		postId: { type: 'number', empty: false },
+	})
+
+	const check = schema({
+		postId: postId,
+	});
+
+	if(check !== true) return resError(res, 400);
 
 	db.query(`
 		SELECT
 			photo_250,
 			photo_600
 		FROM photo
-		WHERE user_id = ${req.user}
-			AND photo_id = ${postId}
-	`, function (error, result, field) {
+		WHERE user_id = "${req.user}"
+			AND photo_id = "${+postId}"
+	`, (error, result, field) => {
 		const oldPath250 = url.parse(result[0].photo_250).pathname;
 		const oldPath600 = url.parse(result[0].photo_600).pathname;
 
@@ -174,37 +230,47 @@ router.post('/deletePost', function (req, res) {
 		db.query(`
 			DELETE
 			FROM photo
-			WHERE user_id = ${req.user}
-				AND photo_id = ${postId}
+			WHERE user_id = "${req.user}"
+				AND photo_id = "${+postId}"
 		`);
 
 		return res.json({deletePost: 'ok'});
 	});
 });
 
-router.post('/deleteComment', function (req, res) {
-	const postId = req.body.postId
-	const commentId = req.body.commentId
+router.post('/deleteComment', (req, res) => {
+	const postId = +req.body.postId;
+	const commentId = +req.body.commentId;
+
+	const schema = new Validator().compile({
+		postId: { type: 'number', empty: false },
+		commentId: { type: 'number', empty: false },
+	})
+
+	const check = schema({
+		postId: postId,
+		commentId: commentId,
+	});
+
+	if(check !== true) return resError(res, 400);
 
 	db.query(`
 		SELECT 
 			comments.user_id
 		FROM comments
-		WHERE comments.comment_id = ${commentId}
-	`, function (error, result, field) {
-		if (error) throw error;
-
+		WHERE comments.comment_id = "${commentId}"
+	`, (error, result, field) => {
 		if(+result[0].user_id === req.user){
 			db.query(`
 				UPDATE photo_dinamic
 				SET photo_comments = photo_comments - 1
-				WHERE photo_id = ${postId}
+				WHERE photo_id = "${+postId}"
 			`);
 			db.query(`
 				DELETE 
 				FROM comments 
-				WHERE comment_id = ${commentId}
-					AND user_id = ${req.user}
+				WHERE comment_id = "${commentId}"
+					AND user_id = "${req.user}"
 			`);
 		}
 

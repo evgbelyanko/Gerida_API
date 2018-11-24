@@ -11,8 +11,7 @@ const db = mysql.createConnection({
 				database: config.db.database
 			});
 
-router.get('/posts', function (req, res) {
-
+router.get('/posts', (req, res)=> {
 	db.query(`
 		SELECT 
 			photo.photo_id,
@@ -35,9 +34,7 @@ router.get('/posts', function (req, res) {
 			&& likes.user_id = follows.follower_id
 		WHERE photo.user_id = follows.who_id 
 			ORDER BY photo.photo_timestamp DESC
-	`, function (error, result, field) {
-		if (error) throw error;
-
+	`, (error, result, field) => {
 		return res.json({feedPosts: result});
 	});
 });

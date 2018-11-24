@@ -1,8 +1,10 @@
 const config = require('../config.json');
+const resError = require('../utils/resError');
 
 const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
+const Validator = require("fastest-validator");
 
 const db = mysql.createConnection({
 				host: config.db.host,
@@ -12,11 +14,21 @@ const db = mysql.createConnection({
 			});
 
 
-router.get('/getInfo', function (req, res) {
-	const userId = +req.query.id
+router.get('/getInfo', (req, res) => {
+	const userId = req.query.id
 	const profile = {};
 
-	console.log(typeof userId)
+	const schema = new Validator().compile({
+		userId: { type: 'string' },
+		profile: { type: 'object' },
+	})
+
+	const check = schema({
+		userId: userId,
+		profile: profile,
+	});
+
+	if(check !== true) return resError(res, 400);
 
 	db.query(`
 		SELECT 
@@ -31,8 +43,10 @@ router.get('/getInfo', function (req, res) {
 		FROM users_dinamic
 		LEFT OUTER JOIN avatars ON avatars.user_id = users_dinamic.user_id
 		LEFT OUTER JOIN country ON country.country_id = users_dinamic.country_id
-		WHERE users_dinamic.user_id = ${userId} LIMIT 1
-	`, function (error, result, field) {
+		WHERE users_dinamic.user_id = ${+userId} LIMIT 1
+	`, (error, result, field) => {
+		if(!result || !result.length) return resError(res, 404);
+
 		profile.profileInfo = result[0];
 		
 		db.query(`
@@ -40,9 +54,9 @@ router.get('/getInfo', function (req, res) {
 				photo_id,
 				photo_250
 			FROM photo
-			WHERE user_id = ${userId}
+			WHERE user_id = ${+userId}
 				ORDER BY photo_timestamp DESC
-		`, function (error, result, field) {
+		`, (error, result, field) => {
 			profile.profileInfo.count_posts = result.length;
 			profile.profilePosts = result;
 

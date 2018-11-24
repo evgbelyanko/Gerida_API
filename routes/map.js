@@ -1,8 +1,10 @@
 const config = require('../config.json');
+const resError = require('../utils/resError');
 
 const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
+const Validator = require('fastest-validator');
 
 const db = mysql.createConnection({
 				host: config.db.host,
@@ -11,23 +13,30 @@ const db = mysql.createConnection({
 				database: config.db.database
 			});
 
-router.get('/clusters', function (req, res) {
+router.get('/clusters', (req, res) => {
 	db.query(`
 		SELECT
 			photo_id,
 			photo_latitude,
 			photo_longitude
 		FROM photo
-	`, function (error, result, field) {
-		if (error) throw error;
-
+	`, (error, result, field) => {
 		return res.json({listMarkers: result});
 	});
 });
 
-router.post('/posts', function (req, res) {
-	const markerIds = req.body.markerIds;
-	const arrayMarkerIds = markerIds.join();
+router.post('/posts', (req, res) => {
+	const markerIds = req.body.markerIds.join();
+
+	const schema = new Validator().compile({
+		markerIds: { type: 'string' },
+	})
+
+	const check = schema({
+		markerIds: markerIds,
+	});
+
+	if(check !== true) return resError(res, 400);
 
 	db.query(`
 		SELECT
@@ -42,10 +51,8 @@ router.post('/posts', function (req, res) {
 		JOIN users_dinamic ON photo.user_id = users_dinamic.user_id
 		JOIN photo_dinamic ON photo.photo_id = photo_dinamic.photo_id
 		LEFT JOIN avatars ON avatars.user_id = users_dinamic.user_id
-		WHERE photo.photo_id IN (${arrayMarkerIds})
-	`, function (error, result, field) {
-		if (error) throw error;
-
+		WHERE photo.photo_id IN (${markerIds})
+	`, (error, result, field) => {
 		return res.json({listPosts: result});
 	});
 });

@@ -19,6 +19,8 @@ const passport = require('passport');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 
+const resError = require('./utils/resError');
+
 app.use(errorHandler())
 app.use(cookieParser());
 app.use(cors({
@@ -56,7 +58,7 @@ passport.serializeUser((user, done) => { done(null, user.appUserId); });
 passport.deserializeUser((id, done) => { done(null, id); });
 
 function protectedSection(req, res, next) {
-	!req.user ? res.status(401).send({error: 401}) : next();
+	!req.user ? resError(res, 401) : next();
 }
 
 app.all('/*', (req, res, next) => {

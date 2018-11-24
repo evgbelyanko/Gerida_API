@@ -109,6 +109,7 @@ const verification = (profile, done, scheme) => {
 			(SELECT user_id FROM users WHERE user_socialnetwork_id = ${scheme.profileId} LIMIT 1) AS user_id 
 		FROM (SELECT max(user_id) AS max_id FROM users LIMIT 1) AS query
 	`, (error, result) => {
+		console.log(result)
 		const {
 			max_id,
 			user_id

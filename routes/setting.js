@@ -1,4 +1,5 @@
 const config = require('../config.json');
+const resError = require('../utils/resError');
 
 const express = require('express');
 const router = express.Router();
@@ -8,6 +9,7 @@ const fs = require('fs');
 const url = require('url');
 const sharp = require('sharp');
 const upload = require('../utils/upload');
+const Validator = require('fastest-validator');
 
 const db = mysql.createConnection({
 				host: config.db.host,
@@ -17,7 +19,7 @@ const db = mysql.createConnection({
 			});
 
 
-router.get('/getInfo', function (req, res) {
+router.get('/getInfo', (req, res) => {
 	let setting = {};
 
 	db.query(`
@@ -31,17 +33,15 @@ router.get('/getInfo', function (req, res) {
 		LEFT JOIN avatars ON avatars.user_id = users_dinamic.user_id
 		LEFT OUTER JOIN country ON country.country_id = users_dinamic.country_id
 		WHERE users_dinamic.user_id = ${req.user} LIMIT 1
-	`, function (error, result, field) {
-		if (error) throw error;
-
+	`, (error, result, field) => {
 		setting = result[0];
 
 		return res.json({setting});
 	});
 });
 
-router.post('/updateAvatar', function (req, res) {
-	upload(req, res, function(error) {
+router.post('/updateAvatar', (req, res) => {
+	upload(req, res, (error) => {
 		const filePath = req.file.path;
 		const fileName = req.file.filename;
 		const {
@@ -49,6 +49,18 @@ router.post('/updateAvatar', function (req, res) {
 			avatars150,
 			pathForWindows
 		} = config.cloud;
+
+		const schema = new Validator().compile({
+			filePath: { type: 'string', empty: false },
+			fileName: { type: 'string', empty: false },
+		})
+
+		const check = schema({
+			filePath: filePath,
+			fileName: fileName,
+		});
+
+		if(check !== true) return resError(res, 400);
 
 		fs.readFile(filePath, (err, data) => {
 			const prom1 = sharp(data)
@@ -68,7 +80,7 @@ router.post('/updateAvatar', function (req, res) {
 						avatar_150
 					FROM avatars
 					WHERE user_id = ${req.user}
-				`, function (error, result, field) {
+				`, (error, result, field) => {
 					const oldPath50 = url.parse(result[0].avatar_50).pathname;
 					const oldPath150 = url.parse(result[0].avatar_150).pathname;
 
@@ -82,7 +94,7 @@ router.post('/updateAvatar', function (req, res) {
 						avatar_50 = "${config.cloudUrl + avatars50 + fileName}",
 						avatar_150 = "${config.cloudUrl + avatars150 + fileName}"
 					WHERE user_id = ${req.user}
-				`, function (error, result, field) {
+				`, (error, result, field) => {
 					return res.json({
 						updateAvatar: true,
 						avatar_150: config.cloudUrl + avatars150 + fileName
@@ -95,14 +107,14 @@ router.post('/updateAvatar', function (req, res) {
 	});
 });
 
-router.post('/deleteAvatar', function (req, res) {
+router.post('/deleteAvatar', (req, res) => {
 	db.query(`
 		SELECT
 			avatar_50,
 			avatar_150
 		FROM avatars
 		WHERE user_id = ${req.user}
-	`, function (error, result, field) {
+	`, (error, result, field) => {
 		const oldPath50 = url.parse(result[0].avatar_50).pathname;
 		const oldPath150 = url.parse(result[0].avatar_150).pathname;
 
@@ -116,7 +128,7 @@ router.post('/deleteAvatar', function (req, res) {
 			avatar_50 = "${config.cloudUrl + config.cloud.defaultAvatars50}",
 			avatar_150 = "${config.cloudUrl + config.cloud.defaultAvatars150}"
 		WHERE user_id = ${req.user}
-	`, function (error, result, field) {
+	`, (error, result, field) => {
 		return res.json({
 			deleteAvatar: true,
 			avatar_150: config.cloudUrl + config.cloud.defaultAvatars150
@@ -125,11 +137,27 @@ router.post('/deleteAvatar', function (req, res) {
 
 });
 
-router.post('/updateProfile', function (req, res) {
-	const userName = req.body.userName;
-	const userDesc = req.body.userDesc;
-	const countryId = req.body.countryId;
-	const userWebsite = req.body.userWebsite;
+router.post('/updateProfile', (req, res) => {
+	const userName = req.body.userName.replace(/\r?\n?\s+/g, ' ').trim();
+	const userDesc = req.body.userDesc.replace(/\s+/g, ' ').trim();
+	const countryId = +req.body.countryId;
+	const userWebsite = req.body.userWebsite.replace(/\r?\n?\s+/g, '').trim();
+
+	const schema = new Validator().compile({
+		userName: { type: 'string', empty: false, max: 30 },
+		userDesc: { type: 'string', max: 250 },
+		countryId: { type: 'number', integer: true },
+		userWebsite: { type: (userWebsite.length ? 'url' : 'string'), max: 150},
+	})
+
+	const check = schema({
+		userName: userName,
+		userDesc: userDesc,
+		countryId: countryId,
+		userWebsite: userWebsite,
+	});
+
+	if(check !== true) return resError(res, 400);
 
 	db.query(`
 		UPDATE users_dinamic
@@ -140,9 +168,7 @@ router.post('/updateProfile', function (req, res) {
 			user_website = "${userWebsite}"
 			WHERE 
 			user_id = ${req.user}
-	`, function (error, result, field) {
-		if (error) throw error;
-
+	`, (error, result, field) => {
 		return res.json({updateProfile: true});
 	});
 });
