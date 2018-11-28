@@ -1,7 +1,9 @@
 {
-	"clientUrl": "https://77.106.125.227:3000",
-	"serverUrl": "https://77.106.125.227:8000",
-	"cloudUrl": "https://77.106.125.227",
+	"protocol": "http",
+	"allowOrigin": ["http://77.106.125.227:3000"],
+	"clientUrl": "://77.106.125.227:3000",
+	"serverUrl": "://77.106.125.227:8000",
+	"cloudUrl": "http://77.106.125.227",
 	"db": {
 		"host": "localhost",
 		"user": "root",
@@ -9,7 +11,7 @@
 		"database": "app"
 	},
 	"cloud": {
-		"pathForWindows": "C:/AppServ/www/",
+		"absolutePath": "C:/AppServ/www/",
 		"defaultAvatars50": "/img/default50.jpg",
 		"defaultAvatars150": "/img/default150.jpg",
 		"tmp": "/cloud/tmp/",

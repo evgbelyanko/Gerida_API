@@ -1,5 +1,5 @@
-const config = require('../config.json');
-const resError = require('../utils/resError');
+const config = require(`../config.json`);
+const resError = require(`../utils/resError`);
 
 const express = require('express');
 const router = express.Router();
@@ -53,7 +53,7 @@ router.get('/actionsFollowing', (req, res) => {
 		counterValue: counterValue,
 	});
 
-	if(check !== true) return resError(res, 400);
+	if(check !== true || whoUserId == req.user) return resError(res, 400);
 
 	db.query(`
 		SELECT follow_id

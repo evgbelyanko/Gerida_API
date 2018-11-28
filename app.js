@@ -1,3 +1,6 @@
+const config = require(`${__dirname}/config.json`);
+const resError = require(`${__dirname}/utils/resError`);
+
 const domain = require('domain');
 const errorHandler = require('express-async-error').Handler
 
@@ -5,10 +8,10 @@ const express = require('express')
 const app = express();
 const fs = require('fs');
 const options = {
-  key: fs.readFileSync('./ssl/privateKey.key'),
-  cert: fs.readFileSync('./ssl/certificate.crt')
+  key: fs.readFileSync(`${__dirname}/ssl/privateKey.key`),
+  cert: fs.readFileSync(`${__dirname}/ssl/certificate.crt`)
 };
-const server = require('https').createServer(options, app);
+const server = require(config.protocol).createServer(config.protocol === 'https' ? options : null, app);
 
 const expressSession = require('express-session');
 const redisClient = require('redis').createClient();
@@ -19,12 +22,10 @@ const passport = require('passport');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 
-const resError = require('./utils/resError');
-
 app.use(errorHandler())
 app.use(cookieParser());
 app.use(cors({
-  origin:['https://77.106.125.227:3000', 'https://77.106.125.227'],
+  origin: config.allowOrigin,
   methods:['GET','POST'],
   credentials: true 
 }));
@@ -62,7 +63,7 @@ function protectedSection(req, res, next) {
 }
 
 app.all('/*', (req, res, next) => {
-	res.header('Access-Control-Allow-Origin', 'https://77.106.125.227:3000', 'https://77.106.125.227');
+	res.header('Access-Control-Allow-Origin', config.allowOrigin.join());
 	res.header('Access-Control-Allow-Credentials', true);
 	res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
 	next();
@@ -78,6 +79,6 @@ app.use('/profile', protectedSection, require('./routes/profile'));
 app.use('/setting', protectedSection, require('./routes/setting'));
 app.use('/photoview', protectedSection, require('./routes/photoview'));
 
-server.listen(8000);
+app.listen(8000);
 
 console.log(`API is running, port :8000`);

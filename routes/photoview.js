@@ -1,5 +1,5 @@
-const config = require('../config.json');
-const resError = require('../utils/resError');
+const config = require(`../config.json`);
+const resError = require(`../utils/resError`);
 
 const express = require('express');
 const router = express.Router();
@@ -224,8 +224,8 @@ router.post('/deletePost', (req, res) => {
 		const oldPath250 = url.parse(result[0].photo_250).pathname;
 		const oldPath600 = url.parse(result[0].photo_600).pathname;
 
-		fs.unlink(config.cloud.pathForWindows + oldPath250, err => {});
-		fs.unlink(config.cloud.pathForWindows + oldPath600, err => {});
+		fs.unlink(config.cloud.absolutePath + oldPath250, err => {});
+		fs.unlink(config.cloud.absolutePath + oldPath600, err => {});
 
 		db.query(`
 			DELETE

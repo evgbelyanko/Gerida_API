@@ -1,5 +1,5 @@
-const config = require('../config.json');
-const resError = require('../utils/resError');
+const config = require(`../config.json`);
+const resError = require(`../utils/resError`);
 
 const express = require('express');
 const router = express.Router();

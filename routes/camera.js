@@ -1,5 +1,6 @@
-const config = require('../config.json');
-const resError = require('../utils/resError');
+const config = require(`../config.json`);
+const upload = require(`../utils/upload`);
+const resError = require(`../utils/resError`);
 
 const express = require('express');
 const router = express.Router();
@@ -7,7 +8,6 @@ const mysql = require('mysql');
 
 const fs = require('fs');
 const sharp = require('sharp');
-const upload = require('../utils/upload');
 const Validator = require("fastest-validator");
 
 const db = mysql.createConnection({
@@ -30,7 +30,7 @@ router.post('/uploadpicture', function (req, res) {
 		const {
 			photos250,
 			photos600,
-			pathForWindows
+			absolutePath
 		} = config.cloud;
 
 		const schema = new Validator().compile({
@@ -58,11 +58,11 @@ router.post('/uploadpicture', function (req, res) {
 		fs.readFile(filePath, (err, data) => {
 			const prom1 = sharp(data)
 				.resize(250, 250)
-				.toFile(pathForWindows + photos250 + fileName);
+				.toFile(absolutePath + photos250 + fileName);
 
 			const prom2 = sharp(data)
 				.resize(600, 600)
-				.toFile(pathForWindows + photos600 + fileName);
+				.toFile(absolutePath + photos600 + fileName);
 
 			Promise.all([prom1, prom2]).then(values => {
 				fs.unlink(filePath, err => {});

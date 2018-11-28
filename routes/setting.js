@@ -1,5 +1,6 @@
-const config = require('../config.json');
-const resError = require('../utils/resError');
+const config = require(`../config.json`);
+const upload = require(`../utils/upload`);
+const resError = require(`../utils/resError`);
 
 const express = require('express');
 const router = express.Router();
@@ -8,7 +9,6 @@ const mysql = require('mysql');
 const fs = require('fs');
 const url = require('url');
 const sharp = require('sharp');
-const upload = require('../utils/upload');
 const Validator = require('fastest-validator');
 
 const db = mysql.createConnection({
@@ -47,7 +47,7 @@ router.post('/updateAvatar', (req, res) => {
 		const {
 			avatars50,
 			avatars150,
-			pathForWindows
+			absolutePath
 		} = config.cloud;
 
 		const schema = new Validator().compile({
@@ -65,11 +65,11 @@ router.post('/updateAvatar', (req, res) => {
 		fs.readFile(filePath, (err, data) => {
 			const prom1 = sharp(data)
 				.resize(50, 50)
-				.toFile(pathForWindows + avatars50 + fileName);
+				.toFile(absolutePath + avatars50 + fileName);
 
 			const prom2 = sharp(data)
 				.resize(150, 150)
-				.toFile(pathForWindows + avatars150 + fileName);
+				.toFile(absolutePath + avatars150 + fileName);
 
 			Promise.all([prom1, prom2]).then(values => { 
 				fs.unlink(filePath, err => {});
@@ -84,8 +84,8 @@ router.post('/updateAvatar', (req, res) => {
 					const oldPath50 = url.parse(result[0].avatar_50).pathname;
 					const oldPath150 = url.parse(result[0].avatar_150).pathname;
 
-					fs.unlink(pathForWindows + oldPath50, err => {});
-					fs.unlink(pathForWindows + oldPath150, err => {});
+					fs.unlink(absolutePath + oldPath50, err => {});
+					fs.unlink(absolutePath + oldPath150, err => {});
 				});
 
 				db.query(`
@@ -118,20 +118,20 @@ router.post('/deleteAvatar', (req, res) => {
 		const oldPath50 = url.parse(result[0].avatar_50).pathname;
 		const oldPath150 = url.parse(result[0].avatar_150).pathname;
 
-		fs.unlink(config.cloud.pathForWindows + oldPath50, err => {});
-		fs.unlink(config.cloud.pathForWindows + oldPath150, err => {});
+		fs.unlink(config.cloud.absolutePath + oldPath50, err => {});
+		fs.unlink(config.cloud.absolutePath + oldPath150, err => {});
 	});
 
 	db.query(`
 		UPDATE avatars
 		SET 
-			avatar_50 = "${config.cloudUrl + config.cloud.defaultAvatars50}",
-			avatar_150 = "${config.cloudUrl + config.cloud.defaultAvatars150}"
+			avatar_50 = "${config.protocol + config.clientUrl + config.cloud.defaultAvatars50}",
+			avatar_150 = "${config.protocol + config.clientUrl + config.cloud.defaultAvatars150}"
 		WHERE user_id = ${req.user}
 	`, (error, result, field) => {
 		return res.json({
 			deleteAvatar: true,
-			avatar_150: config.cloudUrl + config.cloud.defaultAvatars150
+			avatar_150: config.protocol + config.clientUrl + config.cloud.defaultAvatars150
 		});
 	});
 

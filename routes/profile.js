@@ -1,5 +1,5 @@
-const config = require('../config.json');
-const resError = require('../utils/resError');
+const config = require(`../config.json`);
+const resError = require(`../utils/resError`);
 
 const express = require('express');
 const router = express.Router();
@@ -16,16 +16,17 @@ const db = mysql.createConnection({
 
 router.get('/getInfo', (req, res) => {
 	const userId = req.query.id
-	const profile = {};
+	const props = {};
+	const countLimit = 12;
 
 	const schema = new Validator().compile({
 		userId: { type: 'string' },
-		profile: { type: 'object' },
+		props: { type: 'object' },
 	})
 
 	const check = schema({
 		userId: userId,
-		profile: profile,
+		props: props,
 	});
 
 	if(check !== true) return resError(res, 400);
@@ -46,24 +47,75 @@ router.get('/getInfo', (req, res) => {
 		WHERE users_dinamic.user_id = ${+userId} LIMIT 1
 	`, (error, result, field) => {
 		if(!result || !result.length) return resError(res, 404);
+		props.profileInfo = result[0];
 
-		profile.profileInfo = result[0];
-		
+		db.query(`
+			SELECT count(photo_id) AS hidden_posts
+			FROM photo
+			WHERE user_id = ${+userId}
+		`, (error, result, field) => {
+			const count_posts = result[0].hidden_posts;
+			props.hidden_posts = result[0].hidden_posts - countLimit;
+
+			db.query(`
+				SELECT
+					photo_id,
+					photo_250
+				FROM photo
+				WHERE user_id = ${+userId}
+					ORDER BY photo_timestamp DESC LIMIT ${countLimit}
+			`, (error, result, field) => {
+				props.profileInfo.count_posts = count_posts;
+				props.profilePosts = result;
+
+				return res.json(props);
+			});
+		});
+	});
+});
+
+router.get('/loadMorePosts', (req, res) => {
+	const userId = req.query.id;
+	const startLimit = 12;//+req.query.startLimit
+	const countLimit = 12;//+req.query.countLimit
+	const props = {};
+
+	const schema = new Validator().compile({
+		userId: { type: 'string' },
+		startLimit: { type: 'number', empty: false },
+		countLimit: { type: 'number', empty: false },
+	})
+
+	const check = schema({
+		userId: userId,
+		startLimit: startLimit,
+		countLimit: countLimit,
+	});
+
+	if(check !== true) return resError(res, 400);
+
+	db.query(`
+		SELECT count(photo_id)-${countLimit}-${startLimit} AS hidden_posts
+		FROM photo
+		WHERE user_id = ${+userId}
+	`, (error, result, field) => {
+		props.hidden_posts = result[0].hidden_posts;
+
 		db.query(`
 			SELECT
 				photo_id,
 				photo_250
 			FROM photo
 			WHERE user_id = ${+userId}
-				ORDER BY photo_timestamp DESC
+				ORDER BY photo_timestamp DESC LIMIT ${+startLimit}, ${+countLimit}
 		`, (error, result, field) => {
-			profile.profileInfo.count_posts = result.length;
-			profile.profilePosts = result;
+			props.profilePosts = result;
 
-			return res.json({profile});
+			return res.json(props);
 		});
 	});
 });
+
 
 
 module.exports = router;
