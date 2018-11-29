@@ -11,7 +11,7 @@ const request = require('request');
 const passport = require('passport');
 const VKontakteStrategy = require('passport-vkontakte').Strategy;
 const FacebookStrategy = require('passport-facebook').Strategy;
-const GoogleStrategy = require('passport-google-oauth').OAuthStrategy;
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const db = mysql.createConnection({
 				host: config.db.host,
@@ -36,7 +36,6 @@ passport.use(new VKontakteStrategy({
 			first_name: profile._json.first_name,
 		};
 		verification(profile, done, scheme);
-		console.log(`${config.protocol + config.serverUrl}/auth/vkontakte`)
 	}
 ));
 
@@ -60,22 +59,22 @@ passport.use(new FacebookStrategy({
 ));
 
 passport.use(new GoogleStrategy({
-		consumerKey: '37283406293-hv292ahaibvul14a8qfljk5bj6v6pad4.apps.googleusercontent.com',
-		consumerSecret: '-154h-L9Q6uYKqOxSksJWuep',
+		clientID: '37283406293-hv292ahaibvul14a8qfljk5bj6v6pad4.apps.googleusercontent.com',
+		clientSecret: '-154h-L9Q6uYKqOxSksJWuep',
 		callbackURL: `${config.protocol + config.serverUrl}/auth/google`,
-		//profileFields: ['id', 'displayName', 'first_name', 'last_name', 'birthday', 'picture.type(large)' ]
+		profileFields: ['openida', 'profile', 'email'],
+		scope: ['openida', 'profile', 'email']
 	}, (accessToken, refreshToken, profile, cb) => {
-		console.log(profile)
-/*		const scheme = {
+		const scheme = {
 			provider: profile.provider,
 			profileId: profile._json.id,
-			displayName: profile.displayName,
-			last_name: profile._json.last_name,
-			first_name: profile._json.first_name,
-			photo_200: profile._json.picture.data.url,
-			bdate: profile._json.birthday.replace(/\//g,'.')
+			displayName: profile._json.displayName,
+			last_name: profile._json.name.familyName,
+			first_name: profile._json.name.givenName,
+			photo_200: profile._json.image.url + '&sz=200',
+			bdate: null
 		};
-		verification(profile, cb, scheme);*/
+		verification(profile, cb, scheme);
 	}
 ));
 
@@ -90,8 +89,8 @@ router.get('/facebook',
 });
 
 router.get('/google',
-	passport.authenticate('google', { failureRedirect: '/auth' }), (req, res) => {
-	//successfulAuth(req, res);
+	passport.authenticate('google', { failureRedirect: '/auth', scope: ['openida', 'profile', 'email'] }), (req, res) => {
+	successfulAuth(req, res);
 });
 
 router.post('/logout', function(req, res){
@@ -110,7 +109,6 @@ const verification = (profile, done, scheme) => {
 			(SELECT user_id FROM users WHERE user_socialnetwork_id = ${scheme.profileId} LIMIT 1) AS user_id 
 		FROM (SELECT max(user_id) AS max_id FROM users LIMIT 1) AS query
 	`, (error, result) => {
-		console.log(result)
 		const {
 			max_id,
 			user_id
@@ -191,10 +189,12 @@ const registration = (scheme) => {
 			avatar_150
 		) VALUES (
 			"${scheme.userId}",
-			"${config.cloudUrl + avatars50 + fileName}",
-			"${config.cloudUrl + avatars150 + fileName}"
+			"${config.protocol + config.clientUrl + config.cloud.defaultAvatars50}",
+			"${config.protocol + config.clientUrl + config.cloud.defaultAvatars150}"
 		)
 	`);
+/*	config.cloudUrl + avatars50 + fileName
+	config.cloudUrl + avatars150 + fileName*/
 }
 
 module.exports = router;

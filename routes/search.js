@@ -15,7 +15,7 @@ const db = mysql.createConnection({
 
 router.get('/recent', (req, res) => {
 	const startLimit = +req.query.startLimit;
-	const countLimit = 12;//+req.query.countLimit;
+	const countLimit = 30;//+req.query.countLimit;
 	const props = {};
 
 	const schema = new Validator().compile({

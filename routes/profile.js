@@ -17,7 +17,7 @@ const db = mysql.createConnection({
 router.get('/getInfo', (req, res) => {
 	const userId = req.query.id
 	const props = {};
-	const countLimit = 12;
+	const countLimit = 30;
 
 	const schema = new Validator().compile({
 		userId: { type: 'string' },
@@ -76,8 +76,8 @@ router.get('/getInfo', (req, res) => {
 
 router.get('/loadMorePosts', (req, res) => {
 	const userId = req.query.id;
-	const startLimit = 12;//+req.query.startLimit
-	const countLimit = 12;//+req.query.countLimit
+	const startLimit = 30;//+req.query.startLimit
+	const countLimit = 30;//+req.query.countLimit
 	const props = {};
 
 	const schema = new Validator().compile({

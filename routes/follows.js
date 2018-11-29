@@ -61,7 +61,7 @@ router.get('/users', (req, res) => {
 		LEFT JOIN avatars ON avatars.user_id = users_dinamic.user_id
 		WHERE follows.${condition} = ${+userId}
 	`, (error1, result1, field1)  => {
-		if(!result1 || !result1.length) return resError(res, 404);
+		//if(!result1 || !result1.length) return resError(res, 404);
 
 		db.query(`
 			SELECT user_name
